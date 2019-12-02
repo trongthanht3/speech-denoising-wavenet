@@ -27,18 +27,18 @@ def denoise_sample(model, input, condition_input, batch_size, output_filename_pr
             batch_size = num_fragments - batch_i*batch_size
 
         condition_batch = np.array([condition_input, ] * batch_size, dtype='uint8')
-        input_batch = np.zeros((batch_size, model.input_length))
+        input_batch = np.zeros((batch_size, int(model.input_length)))
 
         #Assemble batch
         for batch_fragment_i in range(0, batch_size):
 
             if fragment_i + model.target_field_length > num_output_samples:
                 remainder = input['noisy'][fragment_i:]
-                current_fragment = np.zeros((model.input_length,))
+                current_fragment = np.zeros((int(model.input_length),))
                 current_fragment[:remainder.shape[0]] = remainder
                 num_pad_values = model.input_length - remainder.shape[0]
             else:
-                current_fragment = input['noisy'][fragment_i:fragment_i + model.input_length]
+                current_fragment = input['noisy'][fragment_i:fragment_i + int(model.input_length)]
 
             input_batch[batch_fragment_i, :] = current_fragment
             fragment_i += model.target_field_length
@@ -50,11 +50,11 @@ def denoise_sample(model, input, condition_input, batch_size, output_filename_pr
             denoised_output_fragment = denoised_output_fragments[0]
 
         denoised_output_fragment = denoised_output_fragment[:, model.target_padding: model.target_padding + model.target_field_length]
-        denoised_output_fragment = denoised_output_fragment.flatten().tolist()
+        denoised_output_fragment = denoised_output_fragment.numpy().flatten().tolist()
 
         if noise_output_fragment is not None:
             noise_output_fragment = noise_output_fragment[:, model.target_padding: model.target_padding + model.target_field_length]
-            noise_output_fragment = noise_output_fragment.flatten().tolist()
+            noise_output_fragment = noise_output_fragment.numpy().flatten().tolist()
 
         if type(denoised_output_fragments) is float:
             denoised_output_fragment = [denoised_output_fragment]
@@ -68,17 +68,17 @@ def denoise_sample(model, input, condition_input, batch_size, output_filename_pr
     noise_output = np.array(noise_output)
 
     if num_pad_values != 0:
-        denoised_output = denoised_output[:-num_pad_values]
-        noise_output = noise_output[:-num_pad_values]
+        denoised_output = denoised_output[:int(-num_pad_values)]
+        noise_output = noise_output[:int(-num_pad_values)]
 
     valid_noisy_signal = input['noisy'][
-                         model.half_receptive_field_length:model.half_receptive_field_length + len(denoised_output)]
+                         int(model.half_receptive_field_length):int(model.half_receptive_field_length) + len(denoised_output)]
 
     if input['clean'] is not None:
         input['noise'] = input['noisy'] - input['clean']
 
         valid_clean_signal = input['clean'][
-                         model.half_receptive_field_length:model.half_receptive_field_length + len(denoised_output)]
+                         int(model.half_receptive_field_length):int(model.half_receptive_field_length) + len(denoised_output)]
 
         noise_in_denoised_output = denoised_output - valid_clean_signal
 

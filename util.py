@@ -8,17 +8,17 @@ import warnings
 import scipy.signal
 import scipy.stats
 import soundfile as sf
-import keras
+import tensorflow.keras as keras
 
 def l1_l2_loss(y_true, y_pred, l1_weight, l2_weight):
 
     loss = 0
 
     if l1_weight != 0:
-        loss += l1_weight*keras.objectives.mean_absolute_error(y_true, y_pred)
+        loss += l1_weight*keras.losses.mean_absolute_error(y_true, y_pred)
 
     if l2_weight != 0:
-        loss += l2_weight * keras.objectives.mean_squared_error(y_true, y_pred)
+        loss += l2_weight * keras.losses.mean_squared_error(y_true, y_pred)
 
     return loss
 

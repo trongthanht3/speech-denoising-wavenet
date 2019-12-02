@@ -1,7 +1,7 @@
 # A Wavenet For Speech Denoising - Dario Rethage - 19.05.2017
 # Models.py
 
-import keras
+import tensorflow.keras as keras
 import util
 import os
 import numpy as np
@@ -173,15 +173,15 @@ class DenoisingWavenet():
 
         target_sample_index = self.get_target_sample_index()
 
-        return range(target_sample_index - self.half_target_field_length,
-                     target_sample_index + self.half_target_field_length + 1)
+        return range(int(target_sample_index - self.half_target_field_length),
+                     int(target_sample_index + self.half_target_field_length + 1))
 
     def get_padded_target_field_indices(self):
 
         target_sample_index = self.get_target_sample_index()
 
-        return range(target_sample_index - self.half_target_field_length - self.target_padding,
-                     target_sample_index + self.half_target_field_length + self.target_padding + 1)
+        return range(int(target_sample_index - self.half_target_field_length - self.target_padding),
+                     int(target_sample_index + self.half_target_field_length + self.target_padding + 1))
 
     def get_target_sample_index(self):
         return int(np.floor(self.input_length / 2.0))
@@ -206,11 +206,11 @@ class DenoisingWavenet():
 
     def build_model(self):
 
-        data_input = keras.engine.Input(
+        data_input = keras.layers.Input(
                 shape=(self.input_length,),
                 name='data_input')
 
-        condition_input = keras.engine.Input(shape=(self.condition_input_length,),
+        condition_input = keras.layers.Input(shape=(self.condition_input_length,),
                                              name='condition_input')
 
         data_expanded = layers.AddSingletonDepth()(data_input)
@@ -220,16 +220,16 @@ class DenoisingWavenet():
             name='data_input_target_field_length')(data_expanded)
 
         data_out = keras.layers.Convolution1D(self.config['model']['filters']['depths']['res'],
-                                              self.config['model']['filters']['lengths']['res'], border_mode='same',
-                                              bias=False,
+                                              self.config['model']['filters']['lengths']['res'], padding='same',
+                                              use_bias=False,
                                               name='initial_causal_conv')(data_expanded)
 
         condition_out = keras.layers.Dense(self.config['model']['filters']['depths']['res'],
                                            name='initial_dense_condition',
-                                           bias=False)(condition_input)
-        condition_out = keras.layers.RepeatVector(self.input_length,
+                                           use_bias=False)(condition_input)
+        condition_out = keras.layers.RepeatVector(int(self.input_length),
                                                   name='initial_condition_repeat')(condition_out)
-        data_out = keras.layers.Merge(mode='sum', name='initial_data_condition_merge')(
+        data_out = keras.layers.Add( name='initial_data_condition_merge')(
             [data_out, condition_out])
 
         skip_connections = []
@@ -243,35 +243,35 @@ class DenoisingWavenet():
                     skip_connections.append(skip_out)
                 layer_in_stack += 1
 
-        data_out = keras.layers.Merge(mode='sum')(skip_connections)
+        data_out = keras.layers.Add()(skip_connections)
         data_out = self.activation(data_out)
 
         data_out = keras.layers.Convolution1D(self.config['model']['filters']['depths']['final'][0],
                                               self.config['model']['filters']['lengths']['final'][0],
-                                              border_mode='same',
-                                              bias=False)(data_out)
+                                              padding='same',
+                                              use_bias=False)(data_out)
 
         condition_out = keras.layers.Dense(self.config['model']['filters']['depths']['final'][0],
-                                           bias=False,
+                                           use_bias=False,
                                            name='penultimate_conv_1d_condition')(condition_input)
 
-        condition_out = keras.layers.RepeatVector(self.padded_target_field_length,
+        condition_out = keras.layers.RepeatVector(self.padded_target_field_length +1,
                                                   name='penultimate_conv_1d_condition_repeat')(condition_out)
 
-        data_out = keras.layers.Merge(mode='sum', name='penultimate_conv_1d_condition_merge')([data_out, condition_out])
+        data_out = keras.layers.Add(name='penultimate_conv_1d_condition_merge')([data_out, condition_out])
 
         data_out = self.activation(data_out)
         data_out = keras.layers.Convolution1D(self.config['model']['filters']['depths']['final'][1],
-                                              self.config['model']['filters']['lengths']['final'][1], border_mode='same',
-                                              bias=False)(data_out)
+                                              self.config['model']['filters']['lengths']['final'][1], padding='same',
+                                              use_bias=False)(data_out)
 
-        condition_out = keras.layers.Dense(self.config['model']['filters']['depths']['final'][1], bias=False,
+        condition_out = keras.layers.Dense(self.config['model']['filters']['depths']['final'][1], use_bias=False,
                                            name='final_conv_1d_condition')(condition_input)
 
-        condition_out = keras.layers.RepeatVector(self.padded_target_field_length,
+        condition_out = keras.layers.RepeatVector(self.padded_target_field_length +1,
                                                   name='final_conv_1d_condition_repeat')(condition_out)
 
-        data_out = keras.layers.Merge(mode='sum', name='final_conv_1d_condition_merge')([data_out, condition_out])
+        data_out = keras.layers.Add( name='final_conv_1d_condition_merge')([data_out, condition_out])
 
         data_out = keras.layers.Convolution1D(1, 1)(data_out)
 
@@ -286,17 +286,17 @@ class DenoisingWavenet():
                                               output_shape=lambda shape: (shape[0], shape[1]), name='data_output_2')(
             data_out_noise)
 
-        return keras.engine.Model(input=[data_input, condition_input], output=[data_out_speech, data_out_noise])
+        return keras.Model(inputs=[data_input, condition_input], outputs=[data_out_speech, data_out_noise])
 
     def dilated_residual_block(self, data_x, condition_x, res_block_i, layer_i, dilation, stack_i):
 
         original_x = data_x
 
         # Data sub-block
-        data_out = keras.layers.AtrousConvolution1D(2 * self.config['model']['filters']['depths']['res'],
+        data_out = keras.layers.Convolution1D(2 * self.config['model']['filters']['depths']['res'],
                                                     self.config['model']['filters']['lengths']['res'],
-                                                    atrous_rate=dilation, border_mode='same',
-                                                    bias=False,
+                                                    dilation_rate=dilation, padding='same',
+                                                    use_bias=False,
                                                     name='res_%d_dilated_conv_d%d_s%d' % (
                                                     res_block_i, dilation, stack_i),
                                                     activation=None)(data_x)
@@ -315,7 +315,7 @@ class DenoisingWavenet():
         # Condition sub-block
         condition_out = keras.layers.Dense(2 * self.config['model']['filters']['depths']['res'],
                                            name='res_%d_dense_condition_%d_s%d' % (res_block_i, layer_i, stack_i),
-                                           bias=False)(condition_x)
+                                           use_bias=False)(condition_x)
 
         condition_out = keras.layers.Reshape((self.config['model']['filters']['depths']['res'], 2),
                                              name='res_%d_condition_reshape_d%d_s%d' % (
@@ -329,25 +329,25 @@ class DenoisingWavenet():
                                               name='res_%d_condition_slice_2_d%d_s%d' % (
                                                   res_block_i, dilation, stack_i))(condition_out)
 
-        condition_out_1 = keras.layers.RepeatVector(self.input_length, name='res_%d_condition_repeat_1_d%d_s%d' % (
+        condition_out_1 = keras.layers.RepeatVector(int(self.input_length), name='res_%d_condition_repeat_1_d%d_s%d' % (
                                                         res_block_i, dilation, stack_i))(condition_out_1)
-        condition_out_2 = keras.layers.RepeatVector(self.input_length, name='res_%d_condition_repeat_2_d%d_s%d' % (
+        condition_out_2 = keras.layers.RepeatVector(int(self.input_length), name='res_%d_condition_repeat_2_d%d_s%d' % (
                                                         res_block_i, dilation, stack_i))(condition_out_2)
 
-        data_out_1 = keras.layers.Merge(mode='sum', name='res_%d_merge_1_d%d_s%d' %
+        data_out_1 = keras.layers.Add( name='res_%d_merge_1_d%d_s%d' %
                                                          (res_block_i, dilation, stack_i))([data_out_1, condition_out_1])
-        data_out_2 = keras.layers.Merge(mode='sum', name='res_%d_merge_2_d%d_s%d' % (res_block_i, dilation, stack_i))\
+        data_out_2 = keras.layers.Add( name='res_%d_merge_2_d%d_s%d' % (res_block_i, dilation, stack_i))\
             ([data_out_2, condition_out_2])
 
         tanh_out = keras.layers.Activation('tanh')(data_out_1)
         sigm_out = keras.layers.Activation('sigmoid')(data_out_2)
 
-        data_x = keras.layers.Merge(mode='mul', name='res_%d_gated_activation_%d_s%d' % (res_block_i, layer_i, stack_i))(
+        data_x = keras.layers.Multiply(name='res_%d_gated_activation_%d_s%d' % (res_block_i, layer_i, stack_i))(
             [tanh_out, sigm_out])
 
         data_x = keras.layers.Convolution1D(
             self.config['model']['filters']['depths']['res'] + self.config['model']['filters']['depths']['skip'], 1,
-            border_mode='same', bias=False)(data_x)
+            padding='same', use_bias=False)(data_x)
 
         res_x = layers.Slice((Ellipsis, slice(0, self.config['model']['filters']['depths']['res'])),
                              (self.input_length, self.config['model']['filters']['depths']['res']),
@@ -363,6 +363,6 @@ class DenoisingWavenet():
                                Ellipsis), (self.padded_target_field_length, self.config['model']['filters']['depths']['skip']),
                               name='res_%d_keep_samples_of_interest_d%d_s%d' % (res_block_i, dilation, stack_i))(skip_x)
 
-        res_x = keras.layers.Merge(mode='sum')([original_x, res_x])
+        res_x = keras.layers.Add()([original_x, res_x])
 
         return res_x, skip_x
