@@ -6,7 +6,7 @@ import os
 import util
 import tqdm
 import numpy as np
-
+import csv
 
 def denoise_sample(model, input, condition_input, batch_size, output_filename_prefix, sample_rate, output_path):
 
@@ -95,6 +95,9 @@ def denoise_sample(model, input, condition_input, batch_size, output_filename_pr
 
         output_denoised_filename = output_filename_prefix + 'denoised_%ddB.wav' % new_snr_db
         output_noisy_filename = output_filename_prefix + 'noisy_%ddB.wav' % initial_snr_db
+        with open('snr.csv', mode='a') as snr_file:
+            snr_writer = csv.writer(snr_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            snr_writer.writerow([output_filename_prefix , initial_snr_db , new_snr_db])
     else:
         output_denoised_filename = output_filename_prefix + 'denoised.wav'
         output_noisy_filename = output_filename_prefix + 'noisy.wav'
