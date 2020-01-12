@@ -105,6 +105,7 @@ class DenoisingWavenet():
 
         if print_model_summary:
             model.summary()
+            for layer in model.layers: print(layer.get_config(), layer.get_weights())
 
         model.compile(optimizer=self.optimizer,
                       loss={'data_output_1': self.out_1_loss, 'data_output_2': self.out_2_loss}, metrics=self.metrics)

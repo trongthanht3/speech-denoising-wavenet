@@ -25,7 +25,9 @@ class Subtract(keras.layers.Layer):
 
     def __init__(self, **kwargs):
         super(Subtract, self).__init__(**kwargs)
-
+    def get_config(self):
+        config = super().get_config().copy()
+        return config
     def call(self, x, mask=None):
         return x[0] - x[1]
 
@@ -39,7 +41,9 @@ class Slice(keras.layers.Layer):
         self.selector = selector
         self.desired_output_shape = output_shape
         super(Slice, self).__init__(**kwargs)
-
+    def get_config(self):
+        config = super().get_config().copy()
+        return config
     def call(self, x, mask=None):
 
         selector = self.selector
