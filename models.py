@@ -208,7 +208,7 @@ class DenoisingWavenet():
     def build_model(self):
 
         data_input = keras.layers.Input(
-                shape=(self.input_length,),
+                shape=(int(self.input_length),),
                 name='data_input')
 
         condition_input = keras.layers.Input(shape=(self.condition_input_length,),
