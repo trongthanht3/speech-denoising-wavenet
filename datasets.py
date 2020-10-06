@@ -137,8 +137,8 @@ class NSDTSEADataset():
 
                 offset = np.squeeze(np.random.randint(0, len(speech_regained) - self.model.input_length, 1))
 
-                speech_fragment = speech_regained[offset:offset + self.model.input_length]
-                noise_fragment = noise_regained[offset:offset + self.model.input_length]
+                speech_fragment = speech_regained[offset:offset + int(self.model.input_length)]
+                noise_fragment = noise_regained[offset:offset + int(self.model.input_length)]
 
                 input = noise_fragment + speech_fragment
                 output_speech = speech_fragment
