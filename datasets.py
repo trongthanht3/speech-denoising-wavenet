@@ -147,7 +147,7 @@ class NSDTSEADataset():
                 if self.noise_only_percent > 0:
                     if np.random.uniform(0, 1) <= self.noise_only_percent:
                         input = output_noise #Noise only
-                        output_speech = np.array([0] * self.model.input_length) #Silence
+                        output_speech = np.array([0] * int(self.model.input_length)) #Silence
 
                 batch_inputs.append(input)
                 batch_outputs_1.append(output_speech)
