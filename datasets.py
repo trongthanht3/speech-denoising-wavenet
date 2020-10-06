@@ -136,11 +136,9 @@ class NSDTSEADataset():
                         break
 
                 offset = np.squeeze(np.random.randint(0, len(speech_regained) - self.model.input_length, 1))
-                # print("regain: ", speech_regained)
-                # print("offset:", offset)
-                # print("len: ", self.model.input_length)
-                speech_fragment = speech_regained[offset:offset + int(self.model.input_length)]
-                noise_fragment = noise_regained[offset:offset + int(self.model.input_length)]
+
+                speech_fragment = speech_regained[offset:offset + self.model.input_length]
+                noise_fragment = noise_regained[offset:offset + self.model.input_length]
 
                 input = noise_fragment + speech_fragment
                 output_speech = speech_fragment
@@ -149,7 +147,7 @@ class NSDTSEADataset():
                 if self.noise_only_percent > 0:
                     if np.random.uniform(0, 1) <= self.noise_only_percent:
                         input = output_noise #Noise only
-                        output_speech = np.array([0] * int(self.model.input_length)) #Silence
+                        output_speech = np.array([0] * self.model.input_length) #Silence
 
                 batch_inputs.append(input)
                 batch_outputs_1.append(output_speech)
